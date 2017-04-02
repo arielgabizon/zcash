@@ -68,7 +68,7 @@ class JoinSplitCircuit : public JoinSplit<NumInputs, NumOutputs> {
 public:
     typedef default_r1cs_ppzksnark_pp ppzksnark_ppT;
     typedef Fr<ppzksnark_ppT> FieldT;
-    boost::optional<std::ifstream> pk_stream;
+    boost::optional<std::ifstream> pk_stream=std::ifstream();
     boost::optional<r1cs_ppzksnark_proving_key<ppzksnark_ppT>> pk;
     boost::optional<r1cs_ppzksnark_verification_key<ppzksnark_ppT>> vk;
     boost::optional<r1cs_ppzksnark_processed_verification_key<ppzksnark_ppT>> vk_precomp;
@@ -222,9 +222,9 @@ public:
         const uint256& rt,
         bool computeProof
     ) {
-        if (computeProof && !pk) {
+        /*if (computeProof && !pk) {
             throw std::runtime_error("JoinSplit proving key not loaded");
-        }
+        }*/
 
         if (vpub_old > MAX_MONEY) {
             throw std::invalid_argument("nonsensical vpub_old value");
