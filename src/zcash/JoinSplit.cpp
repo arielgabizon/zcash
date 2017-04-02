@@ -94,7 +94,7 @@ public:
             if (!pkPath) {
                 throw std::runtime_error("proving key path unknown");
             }
-            pk_stream.open(pkPath, std::ios::binary);
+            (*pk_stream).open(*pkPath, std::ios::binary);
         }
     }
 
