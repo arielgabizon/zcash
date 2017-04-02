@@ -68,7 +68,7 @@ class JoinSplitCircuit : public JoinSplit<NumInputs, NumOutputs> {
 public:
     typedef default_r1cs_ppzksnark_pp ppzksnark_ppT;
     typedef Fr<ppzksnark_ppT> FieldT;
-
+    boost::optional<std::ifstream> pk_stream;
     boost::optional<r1cs_ppzksnark_proving_key<ppzksnark_ppT>> pk;
     boost::optional<r1cs_ppzksnark_verification_key<ppzksnark_ppT>> vk;
     boost::optional<r1cs_ppzksnark_processed_verification_key<ppzksnark_ppT>> vk_precomp;
@@ -83,12 +83,18 @@ public:
 
     void loadProvingKey() {
         LOCK(cs_LoadKeys);
-
+/*
         if (!pk) {
             if (!pkPath) {
                 throw std::runtime_error("proving key path unknown");
             }
             loadFromFile(*pkPath, pk);
+        }*/
+        if (!pk_stream) {
+            if (!pkPath) {
+                throw std::runtime_error("proving key path unknown");
+            }
+            pk_stream.open(pkPath, std::ios::binary);
         }
     }
 
@@ -361,8 +367,14 @@ public:
         // estimate that it doesn't matter if we check every time.
         pb.constraint_system.swap_AB_if_beneficial();
 
-        return ZCProof(r1cs_ppzksnark_prover<ppzksnark_ppT>(
+/*        return ZCProof(r1cs_ppzksnark_prover<ppzksnark_ppT>(
             *pk,
+            primary_input,
+            aux_input,
+            pb.constraint_system
+        ));*/
+        return ZCProof(r1cs_ppzksnark_prover<ppzksnark_ppT>(
+            *pk_stream,
             primary_input,
             aux_input,
             pb.constraint_system
