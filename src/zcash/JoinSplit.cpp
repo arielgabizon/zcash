@@ -68,7 +68,7 @@ class JoinSplitCircuit : public JoinSplit<NumInputs, NumOutputs> {
 public:
     typedef default_r1cs_ppzksnark_pp ppzksnark_ppT;
     typedef Fr<ppzksnark_ppT> FieldT;
-    boost::optional<std::ifstream> pk_stream=std::ifstream();
+    std::ifstream pk_stream=std::ifstream();
     boost::optional<r1cs_ppzksnark_proving_key<ppzksnark_ppT>> pk;
     boost::optional<r1cs_ppzksnark_verification_key<ppzksnark_ppT>> vk;
     boost::optional<r1cs_ppzksnark_processed_verification_key<ppzksnark_ppT>> vk_precomp;
@@ -90,12 +90,12 @@ public:
             }
             loadFromFile(*pkPath, pk);
         }*/
-        if (!pk_stream) {
+    //    if (!pk_stream) {
             if (!pkPath) {
                 throw std::runtime_error("proving key path unknown");
             }
-            (*pk_stream).open(*pkPath, std::ios::binary);
-        }
+            (pk_stream).open(*pkPath, std::ios::binary);
+      //  }
     }
 
     void saveProvingKey(std::string path) {
@@ -374,7 +374,7 @@ public:
             pb.constraint_system
         ));*/
         return ZCProof(r1cs_ppzksnark_prover<ppzksnark_ppT>(
-            *pk_stream,
+            pk_stream,
             primary_input,
             aux_input,
             pb.constraint_system
