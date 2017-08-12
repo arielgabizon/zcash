@@ -1096,6 +1096,12 @@ boost::array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_sendmany::get_memo_f
     return memo;
 }
 
+
+
+
+/******************************SHIELD**************************************/
+
+
 /**
  * Override getStatus() to append the operation's input parameters to the default status object.
  */
@@ -1112,13 +1118,12 @@ UniValue AsyncRPCOperation_sendmany::getStatus() const {
 }
 
 AsyncRPCOperation_shield::AsyncRPCOperation_shield(
-    std::string fromAddress,
     std::vector<SendManyRecipient> tOutputs,
     std::vector<SendManyRecipient> zOutputs,
     int minDepth,
     CAmount fee,
     UniValue contextInfo) :
-    fromaddress_(fromAddress), t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo)
+    t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo)
 {
 assert(fee_ >= 0);
 
@@ -1126,15 +1131,15 @@ if (minDepth < 0) {
     throw JSONRPCError(RPC_INVALID_PARAMETER, "Minconf cannot be negative");
 }
 
-if (fromAddress.size() == 0) {
+/* if (fromAddress.size() == 0) {
     throw JSONRPCError(RPC_INVALID_PARAMETER, "From address parameter missing");
 }
-
+ */
 if (tOutputs.size() == 0 && zOutputs.size() == 0) {
     throw JSONRPCError(RPC_INVALID_PARAMETER, "No recipients");
 }
 
-fromtaddr_ = CBitcoinAddress(fromAddress);
+/* fromtaddr_ = CBitcoinAddress(fromAddress);
 isfromtaddr_ = fromtaddr_.IsValid();
 isfromzaddr_ = false;
 
@@ -1160,7 +1165,7 @@ if (!isfromtaddr_) {
 if (isfromzaddr_ && minDepth==0) {
     throw JSONRPCError(RPC_INVALID_PARAMETER, "Minconf cannot be zero when sending from zaddr");
 }
-
+ */
 // Log the context info i.e. the call parameters to z_shield
 if (LogAcceptCategory("zrpcunsafe")) {
     LogPrint("zrpcunsafe", "%s: z_shield initialized (params=%s)\n", getId(), contextInfo.write());
@@ -1241,14 +1246,14 @@ LogPrintf("%s",s);
 // 3. #1277 Spendable notes are not locked, so an operation running in parallel could also try to use them
 bool AsyncRPCOperation_shield::main_impl() {
 
-assert(isfromtaddr_ != isfromzaddr_);
+// assert(isfromtaddr_ != isfromzaddr_);
 
 bool isSingleZaddrOutput = (t_outputs_.size()==0 && z_outputs_.size()==1);
 bool isMultipleZaddrOutput = (t_outputs_.size()==0 && z_outputs_.size()>=1);
 bool isPureTaddrOnlyTx = (isfromtaddr_ && z_outputs_.size() == 0);
 CAmount minersFee = fee_;
 
-// When spending coinbase utxos, you can only specify a single zaddr as the change must go somewhere
+/* // When spending coinbase utxos, you can only specify a single zaddr as the change must go somewhere
 // and if there are multiple zaddrs, we don't know where to send it.
 if (isfromtaddr_) {
     if (isSingleZaddrOutput) {
@@ -1271,7 +1276,18 @@ if (isfromtaddr_) {
 if (isfromzaddr_ && !find_unspent_notes()) {
     throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds, no unspent notes found for zaddr from address.");
 }
+ */
 
+ bool b = find_utxos(false);
+ if (!b) {
+     if (isMultipleZaddrOutput) {
+         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Could not find any non-coinbase UTXOs to spend. Coinbase UTXOs can only be sent to a single zaddr recipient.");
+     } else {
+         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Could not find any non-coinbase UTXOs to spend.");
+     }
+}
+
+ 
 CAmount t_inputs_total = 0;
 for (SendManyInputUTXO & t : t_inputs_) {
     t_inputs_total += std::get<2>(t);
@@ -1295,10 +1311,10 @@ for (SendManyRecipient & t : z_outputs_) {
 CAmount sendAmount = z_outputs_total + t_outputs_total;
 CAmount targetAmount = sendAmount + minersFee;
 
-assert(!isfromtaddr_ || z_inputs_total == 0);
+/* assert(!isfromtaddr_ || z_inputs_total == 0);
 assert(!isfromzaddr_ || t_inputs_total == 0);
-
-if (isfromtaddr_ && (t_inputs_total < targetAmount)) {
+ */
+/* if (isfromtaddr_ && (t_inputs_total < targetAmount)) {
     throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS,
         strprintf("Insufficient transparent funds, have %s, need %s",
         FormatMoney(t_inputs_total), FormatMoney(targetAmount)));
@@ -1308,6 +1324,13 @@ if (isfromzaddr_ && (z_inputs_total < targetAmount)) {
     throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS,
         strprintf("Insufficient protected funds, have %s, need %s",
         FormatMoney(z_inputs_total), FormatMoney(targetAmount)));
+}
+ */
+
+ if (t_inputs_total < targetAmount) {
+    throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS,
+        strprintf("Insufficient transparent funds, have %s, need %s",
+        FormatMoney(t_inputs_total), FormatMoney(targetAmount)));
 }
 
 // If from address is a taddr, select UTXOs to spend
@@ -1418,7 +1441,7 @@ crypto_sign_keypair(joinSplitPubKey_.begin(), joinSplitPrivKey_);
 mtx.joinSplitPubKey = joinSplitPubKey_;
 tx_ = CTransaction(mtx);
 
-// Copy zinputs and zoutputs to more flexible containers
+/* // Copy zinputs and zoutputs to more flexible containers
 std::deque<SendManyInputJSOP> zInputsDeque; // zInputsDeque stores minimum numbers of notes for target amount
 CAmount tmp = 0;
 for (auto o : z_inputs_) {
@@ -1428,12 +1451,13 @@ for (auto o : z_inputs_) {
         break;
     }
 }
+ */
 std::deque<SendManyRecipient> zOutputsDeque;
 for (auto o : z_outputs_) {
     zOutputsDeque.push_back(o);
 }
 
-// When spending notes, take a snapshot of note witnesses and anchors as the treestate will
+/* // When spending notes, take a snapshot of note witnesses and anchors as the treestate will
 // change upon arrival of new blocks which contain joinsplit transactions.  This is likely
 // to happen as creating a chained joinsplit transaction can take longer than the block interval.
 if (z_inputs_.size() > 0) {
@@ -1447,7 +1471,7 @@ if (z_inputs_.size() > 0) {
         jsopWitnessAnchorMap[ jso.ToString() ] = WitnessAnchorData{ vInputWitnesses[0], inputAnchor };
     }
 }
-
+ */
 
 /**
  * SCENARIO #2
@@ -1460,7 +1484,7 @@ if (z_inputs_.size() > 0) {
  *       since there is currently no way to specify a change address and we don't
  *       want users accidentally sending excess funds to a recipient.
  */
-if (isfromtaddr_) {
+//if (isfromtaddr_) {
     add_taddr_outputs_to_tx();
     
     CAmount funds = selectedUTXOAmount;
@@ -1481,7 +1505,7 @@ if (isfromtaddr_) {
                     FormatMoney(change)
                     );
         }
-    }
+//    }
 
     // Create joinsplits, where each output represents a zaddr recipient.
     UniValue obj(UniValue::VOBJ);
@@ -1517,7 +1541,7 @@ if (isfromtaddr_) {
  */   
 
 
-
+/*
 /**
  * SCENARIO #3
  * 
@@ -1527,7 +1551,7 @@ if (isfromtaddr_) {
  * Send to zaddrs by chaining JoinSplits together and immediately consuming any change
  * Send to taddrs by creating dummy z outputs and accumulating value in a change note
  * which is used to set vpub_new in the last chained joinsplit.
- */
+ 
 UniValue obj(UniValue::VOBJ);
 CAmount jsChange = 0;   // this is updated after each joinsplit
 int changeOutputIndex = -1; // this is updated after each joinsplit if jsChange > 0
@@ -1787,6 +1811,7 @@ assert(zOutputsDeque.size() == 0);
 assert(vpubNewProcessed);
 
 sign_send_raw_transaction(obj);
+*/
 return true;
 }
 

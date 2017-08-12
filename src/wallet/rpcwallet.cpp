@@ -3502,7 +3502,7 @@ UniValue z_shield(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 2 || params.size() > 4)
+    if (fHelp || params.size() < 1 || params.size() > 3)
         throw runtime_error(
                 "z_shield \"fromaddress\" [{\"address\":... ,\"amount\":...},...] ( minconf ) ( fee )\n"
                 "\nSend multiple times. Amounts are double-precision floating point numbers."
@@ -3525,8 +3525,8 @@ UniValue z_shield(const UniValue& params, bool fHelp)
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
- 
-    // Check that the from address is valid.
+    
+    /* // Check that the from address is valid.
     auto fromaddress = params[0].get_str();
     bool fromTaddr = false;
     CBitcoinAddress taddr(fromaddress);
@@ -3540,17 +3540,18 @@ UniValue z_shield(const UniValue& params, bool fHelp)
             // invalid
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, should be a taddr or zaddr.");
         }
-    } 
+    }
 
-   /*  // Check that we have the spending key
+    // Check that we have the spending key
     if (!fromTaddr) {
         if (!pwalletMain->HaveSpendingKey(zaddr)) {
-             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "From address does not belong to this node, zaddr spending key not found.");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "From address does not belong to this node, zaddr spending key not found.");
         }
     }
  */
     UniValue outputs = params[0].get_array();
-
+    
+    
     if (outputs.size()==0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, amounts array is empty.");
  
@@ -3680,7 +3681,7 @@ UniValue z_shield(const UniValue& params, bool fHelp)
 
     // Create operation and add to global queue
     std::shared_ptr<AsyncRPCQueue> q = getAsyncRPCQueue();
-    std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_shield(fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo) );
+    std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_shield(taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo) );
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
     return operationId;
