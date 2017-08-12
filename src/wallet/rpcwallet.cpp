@@ -3502,7 +3502,7 @@ UniValue z_shield(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 1 || params.size() > 3)
+    if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
                 "z_shield \"fromaddress\" [{\"address\":... ,\"amount\":...},...] ( minconf ) ( fee )\n"
                 "\nSend multiple times. Amounts are double-precision floating point numbers."
@@ -3549,26 +3549,31 @@ UniValue z_shield(const UniValue& params, bool fHelp)
         }
     }
  */
-    UniValue outputs = params[0].get_array();
+
     
-    
-    if (outputs.size()==0)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, amounts array is empty.");
  
     // Amount
- /*     Amount nAmount = AmountFromValue(params[1]);
+    CAmount nAmount = AmountFromValue(params[0]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
- */
-    // Keep track of addresses to spot duplicates
+ 
+    
+    string output;
+    if (params.size()>1)
+        output = params[1].get_str();
+    else
+        output = z_listaddresses(UniValue(),false)[0].get_str();
+         
+     // Keep track of addresses to spot duplicates
     set<std::string> setAddress;
         
     // Recipients
-    std::vector<SendManyRecipient> taddrRecipients;
+    // std::vector<SendManyRecipient> taddrRecipients;
     std::vector<SendManyRecipient> zaddrRecipients;
-    CAmount nTotalOut = 0;
-
-    for (const UniValue& o : outputs.getValues()) {
+    //CAmount nTotalOut = 0;
+    string memo;
+    zaddrRecipients.push_back( SendManyRecipient(output, nAmount, memo) );
+    /* for (const UniValue& o : outputs.getValues()) {
         if (!o.isObject())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected object");
 
@@ -3620,7 +3625,7 @@ UniValue z_shield(const UniValue& params, bool fHelp)
         }
 
         nTotalOut += nAmount;
-    }
+    } */
 
     // Check the number of zaddr outputs does not exceed the limit.
     if (zaddrRecipients.size() > Z_SENDMANY_MAX_ZADDR_OUTPUTS)  {
@@ -3655,6 +3660,7 @@ UniValue z_shield(const UniValue& params, bool fHelp)
     if (nMinDepth < 0) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Minimum number of confirmations cannot be less than 0");
     }
+    auto nTotalOut = nAmount;
 
     // Fee in Zatoshis, not currency format)
     CAmount nFee = ASYNC_RPC_OPERATION_DEFAULT_MINERS_FEE;
@@ -3681,7 +3687,7 @@ UniValue z_shield(const UniValue& params, bool fHelp)
 
     // Create operation and add to global queue
     std::shared_ptr<AsyncRPCQueue> q = getAsyncRPCQueue();
-    std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_shield(taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo) );
+    std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_shield(zaddrRecipients, nMinDepth, nFee, contextInfo) );
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
     return operationId;
