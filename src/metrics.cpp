@@ -432,6 +432,10 @@ void ThreadShowMetricsScreen()
         std::cout << _("Thank you for running a Zcash node!") << std::endl;
         std::cout << _("You're helping to strengthen the network and contributing to a social good :)") << std::endl;
 
+        // Notify user if on testnet
+        if(CBaseChainParams::TESTNET){
+            std::cout << _("You're currently running on the Zcash testnet") << std::endl;
+        }
         // Privacy notice text
         std::cout << PrivacyInfo();
         std::cout << std::endl;
