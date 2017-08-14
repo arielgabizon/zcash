@@ -1678,8 +1678,6 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
             return state.DoS(100, error("CheckInputs(): vpub_old values out of range"),
                              REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
-        fprintf(stderr, "nValueIn %d", (int)nValueIn);
-        fprintf(stderr, "\n tx.getvlout %d", (int)tx.GetValueOut());
         
         if (nValueIn < tx.GetValueOut())
             return state.DoS(100, error("CheckInputs(): %s value in (%s) < value out (%s)",

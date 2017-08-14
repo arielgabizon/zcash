@@ -618,7 +618,6 @@ static void TxInErrorToJSON(const CTxIn& txin, UniValue& vErrorsRet, const std::
     entry.push_back(Pair("scriptSig", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
     entry.push_back(Pair("sequence", (uint64_t)txin.nSequence));
     entry.push_back(Pair("error", strMessage));
-    fprintf(stderr, "/n in errortojson %s", entry.write().c_str());       
     
     vErrorsRet.push_back(entry);
 }
@@ -799,7 +798,6 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             }
         }
     }
-    fprintf(stderr, "in signrawtransaction 11");       
     
 #ifdef ENABLE_WALLET
     const CKeyStore& keystore = ((fGivenKeys || !pwalletMain) ? tempKeystore : *pwalletMain);
@@ -852,13 +850,11 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
         ScriptError serror = SCRIPT_ERR_OK;
         if (!VerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, MutableTransactionSignatureChecker(&mergedTx, i), &serror)) {
 
-            fprintf(stderr, "in signrawtransaction 221");      
             TxInErrorToJSON(txin, vErrors, ScriptErrorString(serror));
         }
     }
     
     bool fComplete = vErrors.empty();
-    fprintf(stderr, "in signrawtransaction Verrors %s", vErrors[0].getValStr().c_str());       
     
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hex", EncodeHexTx(mergedTx)));
@@ -866,7 +862,6 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     if (!vErrors.empty()) {
         result.push_back(Pair("errors", vErrors));
     }
-    fprintf(stderr, "in signrawtransaction 22 %s", result.getValStr().c_str());       
     
     return result;
 }

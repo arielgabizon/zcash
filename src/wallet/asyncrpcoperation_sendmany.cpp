@@ -785,7 +785,6 @@ void AsyncRPCOperation_sendmany::sign_send_raw_transaction(UniValue obj)
         o.push_back(Pair("test", 1));
         o.push_back(Pair("txid", tx.GetHash().ToString()));
         o.push_back(Pair("hex", signedtxn));
-        fprintf(stderr, "rawtx:: %s", o.write().c_str());
         set_result(o);
     }
 
@@ -1279,7 +1278,6 @@ if (isfromzaddr_ && !find_unspent_notes()) {
     throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds, no unspent notes found for zaddr from address.");
 }
  */
- fprintf(stderr, "before findutxo");
  
  bool b = find_utxos(false);
  
@@ -1299,7 +1297,6 @@ for (SendManyInputUTXO & t : t_inputs_) {
     t_inputs_total += std::get<2>(t);
 }
 
-fprintf(stderr, "inputs total %d", (int)t_inputs_total);
 
 
 /* CAmount z_inputs_total = 0;
@@ -1314,7 +1311,6 @@ for (SendManyRecipient & t : t_outputs_) {
  */
 CAmount z_outputs_total = 0;
 for (SendManyRecipient & t : z_outputs_) {
-    fprintf(stderr, "z_outputs loop");
     
     z_outputs_total += std::get<1>(t);
 }
@@ -1348,7 +1344,6 @@ if (isfromzaddr_ && (z_inputs_total < targetAmount)) {
 CAmount selectedUTXOAmount = 0;
 bool selectedUTXOCoinbase = false;
 //if (isfromtaddr_) {
-    fprintf(stderr, "from taddr condition");    
     // Get dust threshold
     CKey secret;
     secret.MakeNewKey(true);
@@ -1404,7 +1399,6 @@ bool selectedUTXOCoinbase = false;
     }
     tx_ = CTransaction(rawTx);
 //}
-fprintf(stderr, "after from taddr condition");    
 
 LogPrint((isfromtaddr_) ? "zrpc" : "zrpcunsafe", "%s: spending %s to send %s with fee %s\n",
         getId(), FormatMoney(targetAmount), FormatMoney(sendAmount), FormatMoney(minersFee));
@@ -1451,7 +1445,6 @@ LogPrint("zrpc", "%s: fee: %s\n", getId(), FormatMoney(minersFee));
 CMutableTransaction mtx(tx_);
 mtx.nVersion = 2;
 crypto_sign_keypair(joinSplitPubKey_.begin(), joinSplitPrivKey_);
-fprintf(stderr, "after signkeypair");    
 
 mtx.joinSplitPubKey = joinSplitPubKey_;
 tx_ = CTransaction(mtx);
@@ -1848,7 +1841,6 @@ std::string rawtxn = rawtxnValue.get_str();
 
 UniValue params = UniValue(UniValue::VARR);
 params.push_back(rawtxn);
-fprintf(stderr, "rawtxn: %s", rawtxn.c_str());
 UniValue signResultValue = signrawtransaction(params, false);
 UniValue signResultObject = signResultValue.get_obj();
 UniValue completeValue = find_value(signResultObject, "complete");
@@ -1911,14 +1903,11 @@ pwalletMain->AvailableCoins(vecOutputs, false, NULL, true, fAcceptCoinbase);
 
 BOOST_FOREACH(const COutput& out, vecOutputs) {
     if (!out.fSpendable){
-  //      fprintf(stderr, "not spendable");
         continue;
     }
     if (out.nDepth < mindepth_) {
-  //      fprintf(stderr, "small depth");
         continue;
     }
-  //  fprintf(stderr, "in find_utxos loop");
     
 
 /*      if (setAddress.size()) {
@@ -1936,7 +1925,6 @@ BOOST_FOREACH(const COutput& out, vecOutputs) {
     // By default we ignore coinbase outputs
     bool isCoinbase = out.tx->IsCoinBase();
     if (isCoinbase && fAcceptCoinbase==false) {
-        fprintf(stderr, "coinbase");
         continue;
     }
     
@@ -1949,7 +1937,6 @@ BOOST_FOREACH(const COutput& out, vecOutputs) {
 std::sort(t_inputs_.begin(), t_inputs_.end(), [](SendManyInputUTXO i, SendManyInputUTXO j) -> bool {
     return ( std::get<2>(i) < std::get<2>(j));
 });
-fprintf(stderr, "size: %d", (int)t_inputs_.size());
 
 return t_inputs_.size() > 0;
 }
