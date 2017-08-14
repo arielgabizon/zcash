@@ -785,6 +785,7 @@ void AsyncRPCOperation_sendmany::sign_send_raw_transaction(UniValue obj)
         o.push_back(Pair("test", 1));
         o.push_back(Pair("txid", tx.GetHash().ToString()));
         o.push_back(Pair("hex", signedtxn));
+        fprintf(stderr, "rawtx:: %s", o.write().c_str());
         set_result(o);
     }
 
@@ -1099,9 +1100,6 @@ boost::array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_sendmany::get_memo_f
 
 
 
-/******************************SHIELD**************************************/
-
-
 /**
  * Override getStatus() to append the operation's input parameters to the default status object.
  */
@@ -1116,6 +1114,11 @@ UniValue AsyncRPCOperation_sendmany::getStatus() const {
     obj.push_back(Pair("params", contextinfo_ ));
     return obj;
 }
+
+
+/******************************SHIELD**************************************/
+
+
 
 AsyncRPCOperation_shield::AsyncRPCOperation_shield(
     std::vector<SendManyRecipient> tOutputs,
@@ -1277,10 +1280,13 @@ if (isfromzaddr_ && !find_unspent_notes()) {
     throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds, no unspent notes found for zaddr from address.");
 }
  */
-
+ fprintf(stderr, "before findutxo");
+ 
  bool b = find_utxos(false);
+ 
  if (!b) {
-     if (isMultipleZaddrOutput) {
+    
+    if (isMultipleZaddrOutput) {
          throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Could not find any non-coinbase UTXOs to spend. Coinbase UTXOs can only be sent to a single zaddr recipient.");
      } else {
          throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Could not find any non-coinbase UTXOs to spend.");
@@ -1289,26 +1295,32 @@ if (isfromzaddr_ && !find_unspent_notes()) {
 
  
 CAmount t_inputs_total = 0;
+
 for (SendManyInputUTXO & t : t_inputs_) {
     t_inputs_total += std::get<2>(t);
 }
 
-CAmount z_inputs_total = 0;
+fprintf(stderr, "inputs total %d", (int)t_inputs_total);
+
+
+/* CAmount z_inputs_total = 0;
 for (SendManyInputJSOP & t : z_inputs_) {
     z_inputs_total += std::get<2>(t);
 }
-
-CAmount t_outputs_total = 0;
+ */
+/* CAmount t_outputs_total = 0;
 for (SendManyRecipient & t : t_outputs_) {
     t_outputs_total += std::get<1>(t);
 }
-
+ */
 CAmount z_outputs_total = 0;
 for (SendManyRecipient & t : z_outputs_) {
+    fprintf(stderr, "z_outputs loop");
+    
     z_outputs_total += std::get<1>(t);
 }
 
-CAmount sendAmount = z_outputs_total + t_outputs_total;
+CAmount sendAmount = z_outputs_total; //+ t_outputs_total;
 CAmount targetAmount = sendAmount + minersFee;
 
 /* assert(!isfromtaddr_ || z_inputs_total == 0);
@@ -1336,7 +1348,8 @@ if (isfromzaddr_ && (z_inputs_total < targetAmount)) {
 // If from address is a taddr, select UTXOs to spend
 CAmount selectedUTXOAmount = 0;
 bool selectedUTXOCoinbase = false;
-if (isfromtaddr_) {
+//if (isfromtaddr_) {
+    fprintf(stderr, "from taddr condition");    
     // Get dust threshold
     CKey secret;
     secret.MakeNewKey(true);
@@ -1361,7 +1374,7 @@ if (isfromtaddr_) {
             }
         }
     }
-
+    
     // If there is transparent change, is it valid or is it dust?
     if (dustChange < dustThreshold && dustChange != 0) {
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS,
@@ -1391,13 +1404,14 @@ if (isfromtaddr_) {
         rawTx.vin.push_back(in);
     }
     tx_ = CTransaction(rawTx);
-}
+//}
+fprintf(stderr, "after from taddr condition");    
 
 LogPrint((isfromtaddr_) ? "zrpc" : "zrpcunsafe", "%s: spending %s to send %s with fee %s\n",
         getId(), FormatMoney(targetAmount), FormatMoney(sendAmount), FormatMoney(minersFee));
 LogPrint("zrpc", "%s: transparent input: %s (to choose from)\n", getId(), FormatMoney(t_inputs_total));
-LogPrint("zrpcunsafe", "%s: private input: %s (to choose from)\n", getId(), FormatMoney(z_inputs_total));
-LogPrint("zrpc", "%s: transparent output: %s\n", getId(), FormatMoney(t_outputs_total));
+//LogPrint("zrpcunsafe", "%s: private input: %s (to choose from)\n", getId(), FormatMoney(z_inputs_total));
+//LogPrint("zrpc", "%s: transparent output: %s\n", getId(), FormatMoney(t_outputs_total));
 LogPrint("zrpcunsafe", "%s: private output: %s\n", getId(), FormatMoney(z_outputs_total));
 LogPrint("zrpc", "%s: fee: %s\n", getId(), FormatMoney(minersFee));
 
@@ -1408,11 +1422,11 @@ LogPrint("zrpc", "%s: fee: %s\n", getId(), FormatMoney(minersFee));
  * 
  * There are no zaddrs or joinsplits involved.
  */
-if (isPureTaddrOnlyTx) {
+/* if (isPureTaddrOnlyTx) {
     add_taddr_outputs_to_tx();
     
     CAmount funds = selectedUTXOAmount;
-    CAmount fundsSpent = t_outputs_total + minersFee;
+   CAmount fundsSpent = t_outputs_total + minersFee;
     CAmount change = funds - fundsSpent;
     
     if (change > 0) {
@@ -1428,7 +1442,7 @@ if (isPureTaddrOnlyTx) {
     obj.push_back(Pair("rawtxn", EncodeHexTx(tx_)));
     sign_send_raw_transaction(obj);
     return true;
-}
+} */
 /**
  * END SCENARIO #1
  */
@@ -1438,6 +1452,8 @@ if (isPureTaddrOnlyTx) {
 CMutableTransaction mtx(tx_);
 mtx.nVersion = 2;
 crypto_sign_keypair(joinSplitPubKey_.begin(), joinSplitPrivKey_);
+fprintf(stderr, "after signkeypair");    
+
 mtx.joinSplitPubKey = joinSplitPubKey_;
 tx_ = CTransaction(mtx);
 
@@ -1488,7 +1504,9 @@ if (z_inputs_.size() > 0) {
     add_taddr_outputs_to_tx();
     
     CAmount funds = selectedUTXOAmount;
-    CAmount fundsSpent = t_outputs_total + minersFee + z_outputs_total;
+//CAmount fundsSpent = t_outputs_total + minersFee + z_outputs_total;
+    CAmount fundsSpent =  minersFee + z_outputs_total;
+
     CAmount change = funds - fundsSpent;
     
     if (change > 0) {
@@ -1831,6 +1849,7 @@ std::string rawtxn = rawtxnValue.get_str();
 
 UniValue params = UniValue(UniValue::VARR);
 params.push_back(rawtxn);
+fprintf(stderr, "rawtxn: %s", rawtxn.c_str());
 UniValue signResultValue = signrawtransaction(params, false);
 UniValue signResultObject = signResultValue.get_obj();
 UniValue completeValue = find_value(signResultObject, "complete");
@@ -1892,9 +1911,16 @@ LOCK2(cs_main, pwalletMain->cs_wallet);
 pwalletMain->AvailableCoins(vecOutputs, false, NULL, true, fAcceptCoinbase);
 
 BOOST_FOREACH(const COutput& out, vecOutputs) {
-    if (out.nDepth < mindepth_) {
+    if (!out.fSpendable){
+  //      fprintf(stderr, "not spendable");
         continue;
     }
+    if (out.nDepth < mindepth_) {
+  //      fprintf(stderr, "small depth");
+        continue;
+    }
+  //  fprintf(stderr, "in find_utxos loop");
+    
 
 /*      if (setAddress.size()) {
         CTxDestination address;
@@ -1911,6 +1937,7 @@ BOOST_FOREACH(const COutput& out, vecOutputs) {
     // By default we ignore coinbase outputs
     bool isCoinbase = out.tx->IsCoinBase();
     if (isCoinbase && fAcceptCoinbase==false) {
+        fprintf(stderr, "coinbase");
         continue;
     }
     
@@ -1923,6 +1950,7 @@ BOOST_FOREACH(const COutput& out, vecOutputs) {
 std::sort(t_inputs_.begin(), t_inputs_.end(), [](SendManyInputUTXO i, SendManyInputUTXO j) -> bool {
     return ( std::get<2>(i) < std::get<2>(j));
 });
+fprintf(stderr, "size: %d", (int)t_inputs_.size());
 
 return t_inputs_.size() > 0;
 }

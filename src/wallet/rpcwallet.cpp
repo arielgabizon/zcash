@@ -3591,7 +3591,8 @@ UniValue z_shield(const UniValue& params, bool fHelp)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, unknown address format: ")+address );
             }
         }
-
+       fprintf(stderr, "HEREbla");
+        
         if (setAddress.count(address))
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+address);
         setAddress.insert(address);
@@ -3609,7 +3610,8 @@ UniValue z_shield(const UniValue& params, bool fHelp)
                 throw JSONRPCError(RPC_INVALID_PARAMETER,  strprintf("Invalid parameter, size of memo is larger than maximum allowed %d", ZC_MEMO_SIZE ));
             }
         }
-
+        fprintf(stderr, "HEREbla");
+        
         UniValue av = find_value(o, "amount");
         CAmount nAmount = AmountFromValue( av );
         if (nAmount < 0)
