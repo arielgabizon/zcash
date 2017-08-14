@@ -53,7 +53,7 @@ struct WitnessAnchorData {
 
 class AsyncRPCOperation_shield : public AsyncRPCOperation {
 public:
-    AsyncRPCOperation_shield(std::vector<SendManyRecipient> tOutputs, std::vector<SendManyRecipient> zOutputs, int minDepth, CAmount fee = ASYNC_RPC_OPERATION_DEFAULT_MINERS_FEE, UniValue contextInfo = NullUniValue);
+    AsyncRPCOperation_shield(std::vector<SendManyRecipient> zOutputs, int minDepth, CAmount fee = ASYNC_RPC_OPERATION_DEFAULT_MINERS_FEE, UniValue contextInfo = NullUniValue);
     virtual ~AsyncRPCOperation_shield();
     
     // We don't want to be copied or moved around
