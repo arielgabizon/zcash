@@ -1121,12 +1121,11 @@ UniValue AsyncRPCOperation_sendmany::getStatus() const {
 
 
 AsyncRPCOperation_shield::AsyncRPCOperation_shield(
-    std::vector<SendManyRecipient> tOutputs,
     std::vector<SendManyRecipient> zOutputs,
     int minDepth,
     CAmount fee,
     UniValue contextInfo) :
-    t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo)
+    z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo)
 {
 assert(fee_ >= 0);
 
@@ -1138,10 +1137,10 @@ if (minDepth < 0) {
     throw JSONRPCError(RPC_INVALID_PARAMETER, "From address parameter missing");
 }
  */
-if (tOutputs.size() == 0 && zOutputs.size() == 0) {
+/* if (tOutputs.size() == 0 && zOutputs.size() == 0) {
     throw JSONRPCError(RPC_INVALID_PARAMETER, "No recipients");
 }
-
+ */
 /* fromtaddr_ = CBitcoinAddress(fromAddress);
 isfromtaddr_ = fromtaddr_.IsValid();
 isfromzaddr_ = false;
