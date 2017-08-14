@@ -618,7 +618,6 @@ static void TxInErrorToJSON(const CTxIn& txin, UniValue& vErrorsRet, const std::
     entry.push_back(Pair("scriptSig", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
     entry.push_back(Pair("sequence", (uint64_t)txin.nSequence));
     entry.push_back(Pair("error", strMessage));
-    
     vErrorsRet.push_back(entry);
 }
 
@@ -727,6 +726,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
 
         view.SetBackend(viewDummy); // switch back to avoid locking mempool for too long
     }
+
     bool fGivenKeys = false;
     CBasicKeyStore tempKeystore;
     if (params.size() > 2 && !params[2].isNull()) {
@@ -744,7 +744,6 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             tempKeystore.AddKey(key);
         }
     }
-    
 #ifdef ENABLE_WALLET
     else if (pwalletMain)
         EnsureWalletIsUnlocked();
@@ -798,7 +797,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             }
         }
     }
-    
+
 #ifdef ENABLE_WALLET
     const CKeyStore& keystore = ((fGivenKeys || !pwalletMain) ? tempKeystore : *pwalletMain);
 #else
@@ -849,20 +848,18 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
         }
         ScriptError serror = SCRIPT_ERR_OK;
         if (!VerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, MutableTransactionSignatureChecker(&mergedTx, i), &serror)) {
-
             TxInErrorToJSON(txin, vErrors, ScriptErrorString(serror));
         }
     }
-    
     bool fComplete = vErrors.empty();
-    
+
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hex", EncodeHexTx(mergedTx)));
     result.push_back(Pair("complete", fComplete));
     if (!vErrors.empty()) {
         result.push_back(Pair("errors", vErrors));
     }
-    
+
     return result;
 }
 
