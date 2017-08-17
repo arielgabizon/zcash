@@ -2226,6 +2226,55 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
     }
 }
 
+/**
+ * Experimental version that only collects outputs up to a certain amount.
+ */
+ void CWallet::AvailableCoins(vector<COutput>& vCoins, CAmount amount, bool fOnlyConfirmed, const CCoinControl *coinControl, bool fIncludeZeroValue, bool fIncludeCoinBase) const
+ {
+     vCoins.clear();
+ 
+     {
+         LOCK2(cs_main, cs_wallet);
+         CAmount currentAmount = 0;
+         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+         {
+             const uint256& wtxid = it->first;
+             const CWalletTx* pcoin = &(*it).second;
+ 
+             if (!CheckFinalTx(*pcoin))
+                 continue;
+ 
+             if (fOnlyConfirmed && !pcoin->IsTrusted())
+                 continue;
+ 
+             if (pcoin->IsCoinBase() && !fIncludeCoinBase)
+                 continue;
+ 
+             if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+                 continue;
+ 
+             int nDepth = pcoin->GetDepthInMainChain();
+             if (nDepth < 0)
+                 continue;
+            
+             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
+                 isminetype mine = IsMine(pcoin->vout[i]);
+                 if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO && (mine & ISMINE_SPENDABLE) &&
+                     !IsLockedCoin((*it).first, i) && (pcoin->vout[i].nValue > 0 || fIncludeZeroValue) &&
+                     (!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected((*it).first, i))){
+                         vCoins.push_back(COutput(pcoin, i, nDepth, (mine & ISMINE_SPENDABLE) != ISMINE_NO));
+                         currentAmount+= pcoin->vout[i].nValue;
+                         if(currentAmount > amount)
+                            return;
+                 }       
+             }
+         }
+     }
+ }
+ 
+
+
+
 static void ApproximateBestSubset(vector<pair<CAmount, pair<const CWalletTx*,unsigned int> > >vValue, const CAmount& nTotalLower, const CAmount& nTargetValue,
                                   vector<char>& vfBest, CAmount& nBest, int iterations = 1000)
 {
@@ -2377,8 +2426,8 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
 {
     // Output parameter fOnlyCoinbaseCoinsRet is set to true when the only available coins are coinbase utxos.
     vector<COutput> vCoinsNoCoinbase, vCoinsWithCoinbase;
-    AvailableCoins(vCoinsNoCoinbase, true, coinControl, false, false);
-    AvailableCoins(vCoinsWithCoinbase, true, coinControl, false, true);
+    AvailableCoins(vCoinsNoCoinbase, nTargetValue, true, coinControl, false, false);
+    AvailableCoins(vCoinsWithCoinbase, nTargetValue, true, coinControl, false, true);
     fOnlyCoinbaseCoinsRet = vCoinsNoCoinbase.size() == 0 && vCoinsWithCoinbase.size() > 0;
 
     // If coinbase utxos can only be sent to zaddrs, exclude any coinbase utxos from coin selection.
