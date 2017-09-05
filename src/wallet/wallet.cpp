@@ -2191,6 +2191,7 @@ CAmount CWallet::GetImmatureWatchOnlyBalance() const
 void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl, bool fIncludeZeroValue, bool fIncludeCoinBase) const
 {
     vCoins.clear();
+    vCoins.reserve(220000);
 
     {
         LOCK2(cs_main, cs_wallet);
