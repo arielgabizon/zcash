@@ -201,7 +201,7 @@ case "$1" in
                 zcash_rpc zcbenchmark connectblockslow 10
                 ;;
             sendtoaddress)
-                zcash_rpc zcbenchmark sendtoaddress 10 "${@:4}"
+                zcash_rpc zcbenchmark sendtoaddress 10 "${@:4}" 
                 ;;
             loadwallet)
                 zcash_rpc zcbenchmark loadwallet 10 

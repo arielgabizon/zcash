@@ -446,7 +446,13 @@ double benchmark_sendtoaddress(CAmount amount)
 
     params.push_back(addr);
     params.push_back(ValueFromAmount(amount));
-
+    params.push_back("");
+    params.push_back("");
+    UniValue v;
+    v.setBool(false);
+    params.push_back(v);
+    v.setBool(true);
+    params.push_back(v);
     struct timeval tv_start;
     timer_start(tv_start);
     auto txid = sendtoaddress(params, false);
