@@ -293,14 +293,14 @@ public:
         // estimate that it doesn't matter if we check every time.
         pb.constraint_system.swap_AB_if_beneficial();
 
-        std::ifstream fh(pkPath, std::ios::binary);
+        std::unique_ptr< std::ifstream> fh(new std::ifstream(pkPath, std::ios::binary));
 
-        if(!fh.is_open()) {
+        if(!(fh-> is_open())) {
             throw std::runtime_error(strprintf("could not load param file at %s", pkPath));
         }
 
         return ZCProof(r1cs_ppzksnark_prover_streaming<ppzksnark_ppT>(
-            fh,
+            *fh,
             primary_input,
             aux_input,
             pb.constraint_system
