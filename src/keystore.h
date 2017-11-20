@@ -142,6 +142,14 @@ public:
         }
         return false;
     }
+
+    //erase spending key of given address
+    bool EraseSpendingKey(const libzcash::PaymentAddress &address) 
+    {
+        LOCK(cs_SpendingKeyStore);
+        auto res = mapSpendingKeys.erase(address);
+        return res;
+    }
     bool GetNoteDecryptor(const libzcash::PaymentAddress &address, ZCNoteDecryption &decOut) const
     {
         {

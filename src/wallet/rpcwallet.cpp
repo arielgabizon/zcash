@@ -3082,10 +3082,11 @@ UniValue z_listreceivedbyaddress(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid zaddr.");
     }
 
-    if (!pwalletMain->HaveSpendingKey(zaddr)) {
+//commeting out to allow watch only z_addrs
+/*     if (!pwalletMain->HaveSpendingKey(zaddr)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "From address does not belong to this node, zaddr spending key not found.");
     }
-
+ */
 
     UniValue result(UniValue::VARR);
     std::vector<CNotePlaintextEntry> entries;
@@ -3743,4 +3744,48 @@ UniValue z_listoperationids(const UniValue& params, bool fHelp)
     }
 
     return ret;
+}
+
+
+UniValue z_makewatchonly(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size()==0 || params.size() >1)
+        throw runtime_error(
+            "z_makewatchonly \"address\" ( minconf )\n"
+            "\nReturns the balance of a taddr or zaddr belonging to the node’s wallet.\n"
+            "\nArguments:\n"
+            "1. \"address\"      (string) The selected address. It may be a transparent or private address.\n"
+            "2. minconf          (numeric, optional, default=1) Only include transactions confirmed at least this many times.\n"
+            "\nResult:\n"
+            "amount              (numeric) The total amount in " + CURRENCY_UNIT + " received for this address.\n"
+            "\nExamples:\n"
+            "\nThe total amount received by address \"myaddress\"\n"
+            + HelpExampleCli("z_getbalance", "\"myaddress\"") +
+            "\nThe total amount received by address \"myaddress\" at least 5 blocks confirmed\n"
+            + HelpExampleCli("z_getbalance", "\"myaddress\" 5") +
+            "\nAs a json rpc call\n"
+            + HelpExampleRpc("z_getbalance", "\"myaddress\", 5")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+   
+    // Check that the from address is valid.
+    auto fromaddress = params[0].get_str();
+    libzcash::PaymentAddress zaddr;
+    CZCPaymentAddress address(fromaddress);
+    try {
+        zaddr = address.Get();
+    } catch (const std::runtime_error&) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, should be a taddr or zaddr.");
+    }
+    if (!pwalletMain->EraseSpendingKey(zaddr)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "From address does not belong to this node, zaddr spending key not found.");
+    }
+    
+    return UniValue(1);
+
 }
