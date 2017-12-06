@@ -1052,7 +1052,66 @@ public:
 
 } // anon namespace
 
-uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType)
+
+uint256 GetJoinsplitsHash(const CTransaction& txTo){
+    CHashWriter ss(SER_GETHASH, 0);
+    // Serialize vjoinsplit
+    if (txTo.nVersion >= 2) {
+        //
+        // SIGHASH_* functions will hash portions of
+        // the transaction for use in signatures. This
+        // keeps the JoinSplit cryptographically bound
+        // to the transaction.
+        //
+        ::Serialize(ss, txTo.vjoinsplit, 1, txTo.nVersion);
+        if (txTo.vjoinsplit.size() > 0) {
+            ::Serialize(ss, txTo.joinSplitPubKey, 1, txTo.nVersion);
+
+            CTransaction::joinsplit_sig_t nullSig = {};
+            ::Serialize(ss, nullSig, 1, txTo.nVersion);
+        }
+    }
+    return ss.GetHash();
+}
+
+
+
+uint256 GetPrevoutHash(const CTransaction& txTo) {
+    CHashWriter ss(SER_GETHASH, 0);
+    for (const auto& txin : txTo.vin) {
+        ss << txin.prevout;
+    }
+    return ss.GetHash();
+}
+
+uint256 GetSequenceHash(const CTransaction& txTo) {
+    CHashWriter ss(SER_GETHASH, 0);
+    for (const auto& txin : txTo.vin) {
+        ss << txin.nSequence;
+    }
+    return ss.GetHash();
+}
+
+uint256 GetOutputsHash(const CTransaction& txTo) {
+    CHashWriter ss(SER_GETHASH, 0);
+    for (const auto& txout : txTo.vout) {
+        ss << txout;
+    }
+    return ss.GetHash();
+}
+
+
+PrecomputedTransactionData::PrecomputedTransactionData(const CTransaction& txTo)
+{
+    hashPrevouts = GetPrevoutHash(txTo);
+    hashSequence = GetSequenceHash(txTo);
+    hashOutputs = GetOutputsHash(txTo);
+    hashJoinsplits= GetJoinsplitsHash(txTo);
+    //ready = true;
+}
+
+
+uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType,  const boost::optional<PrecomputedTransactionData>& cache)
 {
     if (nIn >= txTo.vin.size() && nIn != NOT_AN_INPUT) {
         //  nIn out of range
@@ -1067,13 +1126,60 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
         }
     }
 
-    // Wrapper to serialize only the necessary parts of the transaction being signed
-    CTransactionSignatureSerializer txTmp(txTo, scriptCode, nIn, nHashType);
+        uint256 hashPrevouts;
+        uint256 hashSequence;
+        uint256 hashOutputs;
+        uint256 joinsplitOutputs;
+        const bool cacheready = (cache!=boost::none); //&& cache->ready;
 
-    // Serialize and hash
-    CHashWriter ss(SER_GETHASH, 0);
-    ss << txTmp << nHashType;
-    return ss.GetHash();
+        if (!(nHashType & SIGHASH_ANYONECANPAY)) {
+            hashPrevouts = cacheready ? cache->hashPrevouts : GetPrevoutHash(txTo);
+        }
+
+        if (!(nHashType & SIGHASH_ANYONECANPAY) && (nHashType & 0x1f) != SIGHASH_SINGLE && (nHashType & 0x1f) != SIGHASH_NONE) {
+            hashSequence = cacheready ? cache->hashSequence : GetSequenceHash(txTo);
+        }
+
+
+        if ((nHashType & 0x1f) != SIGHASH_SINGLE && (nHashType & 0x1f) != SIGHASH_NONE) {
+            hashOutputs = cacheready ? cache->hashOutputs : GetOutputsHash(txTo);
+            joinsplitOutputs = cacheready ? cache->hashJoinsplits : GetJoinsplitsHash(txTo);
+        } else if ((nHashType & 0x1f) == SIGHASH_SINGLE && nIn < txTo.vout.size()) {
+            CHashWriter ss(SER_GETHASH, 0);
+            ss << txTo.vout[nIn];
+            hashOutputs = ss.GetHash();
+        }
+
+        CHashWriter ss(SER_GETHASH, 0);
+        // Version
+        ss << txTo.nVersion;
+        // Input prevouts/nSequence (none/all, depending on flags)
+        ss << hashPrevouts;
+        ss << hashSequence;
+        // The input being signed (replacing the scriptSig with scriptCode + amount)
+        // The prevout may already be contained in hashPrevout, and the nSequence
+        // may already be contain in hashSequence.
+        ss << txTo.vin[nIn].prevout;
+        ss << scriptCode;
+//        ss << amount;
+        ss << txTo.vin[nIn].nSequence;
+        // Outputs (none/one/all, depending on flags)
+        ss << hashOutputs;
+        // Locktime
+        ss << txTo.nLockTime;
+        // Sighash type
+        ss << nHashType;
+
+        return ss.GetHash();
+ 
+
+    // // Wrapper to serialize only the necessary parts of the transaction being signed
+    // CTransactionSignatureSerializer txTmp(txTo, scriptCode, nIn, nHashType);
+
+    // // Serialize and hash
+    // CHashWriter ss(SER_GETHASH, 0);
+    // ss << txTmp << nHashType;
+    // return ss.GetHash();
 }
 
 bool TransactionSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
