@@ -1059,6 +1059,8 @@ public:
 
 const unsigned char ZCASH_PREVOUTS_HASH_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] =
     {'Z','c','a','s','h','P','r','e','v','o','u','t','H','a','s','h'};
+const unsigned char ZCASH_INPUTS_HASH_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] =
+    {'Z','c','a','s','h','I','n','p','u','t','s','s','H','a','s','h'};
 const unsigned char ZCASH_SEQUENCE_HASH_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] =
     {'Z','c','a','s','h','S','e','q','u','e','n','c','H','a','s','h'};
 const unsigned char ZCASH_OUTPUTS_HASH_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] =
@@ -1070,6 +1072,13 @@ uint256 GetPrevoutHash(const CTransaction& txTo) {
     CBLAKE2bWriter ss(SER_GETHASH, 0, ZCASH_PREVOUTS_HASH_PERSONALIZATION);
     for (unsigned int n = 0; n < txTo.vin.size(); n++) {
         ss << txTo.vin[n].prevout;
+    }
+    return ss.GetHash();
+}
+uint256 GetInputHash(const CTransaction& txTo) {
+    CBLAKE2bWriter ss(SER_GETHASH, 0, ZCASH_INPUTS_HASH_PERSONALIZATION);
+    for (unsigned int n = 0; n < txTo.vin.size(); n++) {
+        ss << txTo.vin[n];
     }
     return ss.GetHash();
 }
@@ -1104,6 +1113,7 @@ uint256 GetJoinSplitsHash(const CTransaction& txTo) {
 PrecomputedTransactionData::PrecomputedTransactionData(const CTransaction& txTo)
 {
     hashPrevouts = GetPrevoutHash(txTo);
+    hashInputs = GetInputHash(txTo);
     hashSequence = GetSequenceHash(txTo);
     hashOutputs = GetOutputsHash(txTo);
     hashJoinSplits = GetJoinSplitsHash(txTo);
@@ -1136,12 +1146,17 @@ uint256 SignatureHash(
 
     if (sigversion == SIGVERSION_OVERWINTER) {
         uint256 hashPrevouts;
+        uint256 hashInputs;
         uint256 hashSequence;
         uint256 hashOutputs;
         uint256 hashJoinSplits;
 
         if (!(nHashType & SIGHASH_ANYONECANPAY)) {
             hashPrevouts = cache ? cache->hashPrevouts : GetPrevoutHash(txTo);
+        }
+
+        if (!( (nHashType & SIGHASH_ANYONECANPAY) &&  (nIn == NOT_AN_INPUT) )) {
+            hashPrevouts = cache ? cache->hashInputs : GetInputHash(txTo);
         }
 
         if (!(nHashType & SIGHASH_ANYONECANPAY) && (nHashType & 0x1f) != SIGHASH_SINGLE && (nHashType & 0x1f) != SIGHASH_NONE) {
@@ -1172,6 +1187,9 @@ uint256 SignatureHash(
         ss << txTo.nVersionGroupId;
         // Input prevouts/nSequence (none/all, depending on flags)
         ss << hashPrevouts;
+        // If signing for a shielded input, serialize the inputs (including scriptSig)
+        if (nIn != NOT_AN_INPUT)
+            ss << hashInputs;
         ss << hashSequence;
         // Outputs (none/one/all, depending on flags)
         ss << hashOutputs;
