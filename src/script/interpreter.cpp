@@ -1155,8 +1155,9 @@ uint256 SignatureHash(
             hashPrevouts = cache ? cache->hashPrevouts : GetPrevoutHash(txTo);
         }
 
-        if (!( (nHashType & SIGHASH_ANYONECANPAY) &&  (nIn == NOT_AN_INPUT) )) {
-            hashPrevouts = cache ? cache->hashInputs : GetInputHash(txTo);
+        // hashInputs only relevant for signing joinsplit
+        if (!(nHashType & SIGHASH_ANYONECANPAY) &&  (nIn == NOT_AN_INPUT) ) {
+            hashInputs = cache ? cache->hashInputs : GetInputHash(txTo);
         }
 
         if (!(nHashType & SIGHASH_ANYONECANPAY) && (nHashType & 0x1f) != SIGHASH_SINGLE && (nHashType & 0x1f) != SIGHASH_NONE) {
@@ -1187,8 +1188,8 @@ uint256 SignatureHash(
         ss << txTo.nVersionGroupId;
         // Input prevouts/nSequence (none/all, depending on flags)
         ss << hashPrevouts;
-        // If signing for a shielded input, serialize the inputs (including scriptSig)
-        if (nIn != NOT_AN_INPUT)
+        // If signing for a shielded input, serialize the transparent inputs (including scriptSig)
+        if (nIn == NOT_AN_INPUT)
             ss << hashInputs;
         ss << hashSequence;
         // Outputs (none/one/all, depending on flags)
