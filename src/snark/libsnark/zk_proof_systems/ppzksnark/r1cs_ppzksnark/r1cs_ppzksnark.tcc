@@ -609,6 +609,8 @@ r1cs_ppzksnark_proof<ppT> r1cs_ppzksnark_prover_streaming(std::ifstream &proving
         knowledge_commitment_vector<G1<ppT>, G1<ppT> > A_query;
         proving_key_file >> A_query;
         proof.g_A = r1cs_compute_proof_kc<ppT, G1<ppT>, G1<ppT> >(qap_wit, A_query, qap_wit.d1);
+        assert(A_query[qap_wit.num_variables()+1].g != G1<ppT>::zero());
+
     }
     leave_block("Compute answer to A-query", false);
 
@@ -617,6 +619,7 @@ r1cs_ppzksnark_proof<ppT> r1cs_ppzksnark_prover_streaming(std::ifstream &proving
         knowledge_commitment_vector<G2<ppT>, G1<ppT> > B_query;
         proving_key_file >> B_query;
         proof.g_B = r1cs_compute_proof_kc<ppT, G2<ppT>, G1<ppT> >(qap_wit, B_query, qap_wit.d2);
+        assert(B_query[qap_wit.num_variables()+1].g != G2<ppT>::zero());
     }
     leave_block("Compute answer to B-query", false);
 
@@ -625,6 +628,7 @@ r1cs_ppzksnark_proof<ppT> r1cs_ppzksnark_prover_streaming(std::ifstream &proving
         knowledge_commitment_vector<G1<ppT>, G1<ppT> > C_query;
         proving_key_file >> C_query;
         proof.g_C = r1cs_compute_proof_kc<ppT, G1<ppT>, G1<ppT> >(qap_wit, C_query, qap_wit.d3);
+        assert(C_query[qap_wit.num_variables()+1].g != G1<ppT>::zero());
     }
     leave_block("Compute answer to C-query", false);
 
